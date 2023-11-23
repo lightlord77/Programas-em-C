@@ -1,0 +1,86 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+struct Pixel {
+    unsigned char r, g, b;
+};
+
+// Função para converter um valor de cor para um caractere ASCII
+char corParaASCII(struct Pixel pixel) {
+    // Use sua lógica para atribuir caracteres com base nos valores dos canais de cor
+    int mediaCor = (pixel.r + pixel.g + pixel.b) / 3;
+
+    if (mediaCor < 52) {
+        return '#';  // Caractere para tons escuros
+    } 
+	else if (mediaCor < 103) {
+        return '%';  // Caractere para tons médio escuro
+    }
+    else if (mediaCor < 154) {
+        return 'o';  // Caractere para tons médios
+    }
+    else if (mediaCor < 205) {
+        return '=';  // Caractere para tons médio claro
+    }
+	else {
+        return '.';  // Caractere para tons claros
+    }
+}
+
+int main() {
+    char arq[] = "C:\\Users\\gabri\\Desktop\\PjBL2 - Imagens\\07.ppm";
+    FILE *fp;
+    char id[3];
+    int colunas, linhas, maximo;
+    int i, j;
+    struct Pixel **imagem;
+
+    fp = fopen(arq, "rb");
+    if (fp == NULL) {
+        printf("Erro na abertura do arquivo <%s>\n", arq);
+        exit(EXIT_FAILURE);
+    }
+
+    // Lendo informações iniciais do arquivo ppm
+    fscanf(fp, "%2s", id);
+    fscanf(fp, "%d", &colunas);
+    fscanf(fp, "%d", &linhas);
+    fscanf(fp, "%d", &maximo);
+    fseek(fp, 1, SEEK_CUR); // Consumindo o caractere de quebra de linha
+
+    printf("Tipo do arquivo <%s>: %s\n", arq, id);
+    printf("Maximo: %d\n", maximo);
+    printf("Imagem tem %d x %d pixels\n", linhas, colunas);
+
+    // Alocando matriz de pixels
+    imagem = (struct Pixel **)malloc(linhas * sizeof(struct Pixel *));
+    for (i = 0; i < linhas; i++) {
+        imagem[i] = (struct Pixel *)malloc(colunas * sizeof(struct Pixel));
+    }
+
+    // Lendo os pixels da imagem
+    for (i = 0; i < linhas; i++) {
+        for (j = 0; j < colunas; j++) {
+            fread(&imagem[i][j], sizeof(struct Pixel), 1, fp);
+        }
+    }
+
+    // Convertendo a imagem para arte ASCII
+    for (i = 0; i < linhas; i++) {
+        for (j = 0; j < colunas; j++) {
+            char ascii_char = corParaASCII(imagem[i][j]);
+            printf("%c", ascii_char);
+        }
+        printf("\n");
+    }
+
+    // Liberando a memória alocada para a matriz de pixels
+    for (i = 0; i < linhas; i++) {
+        free(imagem[i]);
+    }
+    free(imagem);
+
+    fclose(fp);
+
+    return 0;
+}
