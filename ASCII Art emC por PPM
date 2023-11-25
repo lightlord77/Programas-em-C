@@ -1,0 +1,182 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+struct Pixel {
+    unsigned char r, g, b;
+};
+
+char corParaASCII(struct Pixel pixel) {
+    int mediaCor = (pixel.r + pixel.g + pixel.b) / 3;
+
+    if (mediaCor < 52) {
+        return '#';
+    } else if (mediaCor < 103) {
+        return '%';
+    } else if (mediaCor < 154) {
+        return 'o';
+    } else if (mediaCor < 205) {
+        return '-';
+    } else {
+        return '.';
+    }
+}
+
+void salvarImagemASCII(char *arquivo, char **asciiArt, int linhas, int colunas) {
+    FILE *saida = fopen(arquivo, "w");
+    if (saida == NULL) {
+        printf("Erro na abertura do txt <%s>\n", arquivo);
+        exit(EXIT_FAILURE);
+    }
+
+    for (int i = 0; i < linhas; i++) {
+        for (int j = 0; j < colunas; j++) {
+            fprintf(saida, "%c", asciiArt[i][j]);
+        }
+        fprintf(saida, "\n");
+    }
+
+    fclose(saida);
+}
+
+void salvarImagemPPM(char *arquivo, struct Pixel **imagem, int linhas, int colunas) {
+    FILE *saida = fopen(arquivo, "wb");
+    if (saida == NULL) {
+        printf("Erro na abertura do PPM <%s>\n", arquivo);
+        exit(EXIT_FAILURE);
+    }
+
+    // Escrevendo o cabeçalho do arquivo PPM
+    fprintf(saida, "P6\n%d %d\n255\n", colunas, linhas);
+
+    // Escrevendo os pixels na escala de cinza
+    for (int i = 0; i < linhas; i++) {
+        for (int j = 0; j < colunas; j++) {
+            unsigned char cinza = (imagem[i][j].r + imagem[i][j].g + imagem[i][j].b) / 3;
+            fprintf(saida, "%c%c%c", cinza, cinza, cinza);
+        }
+    }
+
+    fclose(saida);
+}
+
+int main() {
+    char arq[] = "C:\\Users\\gabri\\Desktop\\PjBL2 - Imagens\\01.ppm";
+    FILE *fp;
+    char id[3];
+    int colunas, linhas, maximo;
+    int i, j;
+    struct Pixel **imagem;
+    char **asciiArt;
+
+    // Tentando abrir o arquivo para verificar a existência
+    if ((fp = fopen(arq, "rb")) == NULL) {
+        printf("O arquivo <%s> não existe.\n", arq);
+        exit(EXIT_FAILURE);
+    }
+    fclose(fp);  // Fecha depois que veriificou
+
+    // Abrir o arquivo para leitura
+    fp = fopen(arq, "rb");
+    if (fp == NULL) {
+        printf("Erro na abertura do arquivo <%s>\n", arq);
+        exit(EXIT_FAILURE);
+    }
+
+    // Lendo informações do arquivo ppm
+    fscanf(fp, "%2s", id);
+    if (id[0] != 'P' || id[1] != '6') {
+        printf("Erro: O arquivo <%s> não está no formato PPM adequado.\n", arq);
+        fclose(fp);
+        exit(EXIT_FAILURE);
+    }
+
+    fscanf(fp, "%d", &colunas);
+    fscanf(fp, "%d", &linhas);
+    fscanf(fp, "%d", &maximo);
+    fseek(fp, 1, SEEK_CUR); // Consumindo o caractere de quebra de linha
+
+    printf("Tipo do arquivo <%s>: %s\n", arq, id);
+    printf("Maximo: %d\n", maximo);
+    printf("Imagem tem %d x %d pixels\n", linhas, colunas);
+
+    // Alocando matriz de pixels
+    imagem = (struct Pixel **)malloc(linhas * sizeof(struct Pixel *));
+    if (imagem == NULL) {
+        printf("Erro na alocação de memória para linhas.\n");
+        fclose(fp);
+        exit(EXIT_FAILURE);
+    }
+
+    for (i = 0; i < linhas; i++) {
+        imagem[i] = (struct Pixel *)malloc(colunas * sizeof(struct Pixel));
+        if (imagem[i] == NULL) {
+            printf("Erro na alocação de memória para colunas.\n");
+            // Libera a memória alocada anteriormente (free)
+            for (int k = 0; k < i; k++) {
+                free(imagem[k]);
+            }
+            free(imagem);
+            fclose(fp);
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    // Lendo os pixels da imagem
+    for (i = 0; i < linhas; i++) {
+        for (j = 0; j < colunas; j++) {
+            fread(&imagem[i][j], sizeof(struct Pixel), 1, fp);
+        }
+    }
+
+    // Convertendo a imagem para arte ASCII e mostrando na tela
+    asciiArt = (char **)malloc(linhas * sizeof(char *));
+    for (i = 0; i < linhas; i++) {
+        asciiArt[i] = (char *)malloc(colunas * sizeof(char));
+        if (asciiArt[i] == NULL) {
+            printf("Erro na alocação de memória para asciiArt.\n");
+            // Libera a memória alocada anteriormente
+            for (int k = 0; k < i; k++) {
+                free(asciiArt[k]);
+            }
+            free(asciiArt);
+            // Libera a memória alocada para a matriz de pixels
+            for (i = 0; i < linhas; i++) {
+                free(imagem[i]);
+            }
+            free(imagem);
+            fclose(fp);
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    for (i = 0; i < linhas; i++) {
+        for (j = 0; j < colunas; j++) {
+            asciiArt[i][j] = corParaASCII(imagem[i][j]);
+            printf("%c", asciiArt[i][j]);
+        }
+        printf("\n");
+    }
+
+    // Salvando a imagem ASCII em um arquivo
+    salvarImagemASCII("C:\\Users\\gabri\\Desktop\\PjBL2 - Imagens\\imagem01.txt", asciiArt, linhas, colunas);
+
+    // Salvando a versão em PPM
+    salvarImagemPPM("C:\\Users\\gabri\\Desktop\\PjBL2 - Imagens\\imagem01_PB.ppm", imagem, linhas, colunas);
+
+    // Liberando a memória alocada para a matriz de pixels
+    for (i = 0; i < linhas; i++) {
+        free(imagem[i]);
+    }
+    free(imagem);
+
+    // Liberando a memória alocada para asciiArt
+    for (i = 0; i < linhas; i++) {
+        free(asciiArt[i]);
+    }
+    free(asciiArt);
+
+    // Fechando o arquivo de entrada
+    fclose(fp);
+
+    return 0;
+}
